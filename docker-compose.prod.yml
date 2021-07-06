@@ -1,0 +1,25 @@
+version: '3.7'
+
+services:
+  web:
+    container_name: canonizer_service
+    build:
+      context: ./services/web
+      dockerfile: Dockerfile.prod
+    command: gunicorn --bind 0.0.0.0:5000 app:app
+    volumes:
+      - classla_volume:/home/app/classla_resources
+    expose:
+      - 5000
+    env_file:
+      - ./.env.prod
+  nginx:
+    container_name: canonizer_proxy
+    build: ./services/nginx
+    ports:
+      - 80:80
+    depends_on:
+      - web
+
+volumes:
+  classla_volume:

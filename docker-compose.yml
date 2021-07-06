@@ -1,0 +1,18 @@
+version: '3.7'
+
+services:
+  web:
+    container_name: canonizer_service_dev
+    build:
+        context: ./services/web
+        dockerfile: Dockerfile
+    command: python app.py
+    volumes:
+      - ./services/web/:/usr/src/app/
+      - classla_volume:/root/classla_resources
+    ports:
+      - 5000:5000
+    env_file:
+      - ./.env.dev
+volumes:
+  classla_volume:

@@ -1,0 +1,6 @@
+flask-restx==0.4.0
+gunicorn==20.1.0
+classla==1.0.1
+lemmagen3==3.3.1
+flask-socketio==5.1.0
+simple-websocket==0.2.0
