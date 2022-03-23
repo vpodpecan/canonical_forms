@@ -77,7 +77,7 @@ def find_canon(term):
             head_form = lem.lemmatize(head2.text.lower())
             return head_form
         else:
-            return 'HEAD not found'
+            return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
     else:
         for word in term.words:
             if word.id < head.id:
