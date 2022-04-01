@@ -69,7 +69,7 @@ The following command
 $ docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-will build the images and run the service and proxy containers. The web interface is now available at [http://localhost](http://localhost) (port 80). This setup can be used in production.
+will build the images and run the service and proxy containers. The web interface is now available at [http://localhost](http://localhost) (port 8080). This setup can be used in production.
 
 
 ## Authors
