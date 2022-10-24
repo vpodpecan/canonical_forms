@@ -9,21 +9,27 @@ classla.download('sl', logging_level='WARNING')
 BASEDIR = os.path.dirname(__file__)
 
 
-def lem_adj(gender, wrd):
+def lem_adj(gender, number, wrd):
     lem = Lemmatizer()
-    if gender == 'm':
+    if gender == 'm' and number == 's':
         lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-male.bin'))
-    elif gender == 'f':
+    elif gender == 'm' and number == 'p':
+        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-male-plural.bin'))
+    elif gender == 'f' and number == 's':
         lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-female.bin'))
-    elif gender == 'n':
+    elif gender == 'f' and number == 'p':
+        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-female-plural.bin'))
+    elif gender == 'n' and number == 's':
         lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-neutral.bin'))
+    elif gender == 'n' and number == 'p':
+        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-neutral-plural.bin'))
 
     form = lem.lemmatize(wrd)
     return form
 
 
 def process_nlp_pipeline(lang, text):
-    nlp = classla.Pipeline(lang=lang, processors='tokenize,pos,lemma', tokenize_pretokenized=True, logging_level='WARNING')
+    nlp = classla.Pipeline(lang=lang, processors='tokenize,pos,lemma, depparse', tokenize_pretokenized=True, logging_level='WARNING')
     doc = nlp(text)
     return doc
 
@@ -62,52 +68,129 @@ def subfinder(mylist, pattern):
 
 
 def find_canon(term):
-    head = None
-    pre = []
-    post = []
-    for word in term.words:
-        if word.upos == 'NOUN' or word.upos == 'PROPN':
-            head = word
-            break
-    if head is None:
-        if len(term.words) == 1:
-            head2 = term.words[0]
-            lem = Lemmatizer()
-            lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-            head_form = lem.lemmatize(head2.text.lower())
-            return head_form
-        else:
-            return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
-    else:
+
+    try:
+        if len(term.words) == 1 and term.words[0].text.isupper() and len( term.words[0].text) < 5: # if acronym (single word, all uppercase and length les than 5 characters)
+            return  term.words[0].text
+
+        head = None
+        pre = []
+        post = []
+        propns = 0
+
+        
         for word in term.words:
-            if word.id < head.id:
-                pre.append(word)
-            elif word.id > head.id:
-                post.append(word)
+            if word.upos == "PROPN":
+                propns += 1
+            if word.head == 0:
+                head = word
+        ## special case where all words are proper nouns and each word is canonized independently 
+        if propns == len(term.words):
+            canon_name = []
+            for word in term.words:
+                lem = Lemmatizer()
+                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
+                form = lem.lemmatize(word.text)
+                canon_name.append(form)
+            return ' '.join(canon_name)
 
-    canon = []
-    for el in pre:
-        msd = get_adj_msd(head, el)
-        if msd is None:
-            canon.append(el.lemma.lower())
+
+
+        if head is None:
+            if len(term.words) == 1:
+                head2 = term.words[0]
+                lem = Lemmatizer()
+                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
+                head_form = lem.lemmatize(head2.text.lower())
+                return head_form
+            else:
+                return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
         else:
-            if msd[0] == 'A' and msd[3] == 'm':
-                form = lem_adj('m', el.text.lower())
-                canon.append(form)
-            elif msd[0] == 'A' and msd[3] == 'f':
-                form = lem_adj('f', el.text.lower())
-                canon.append(form)
-            elif msd[0] == 'A' and msd[3] == 'n':
-                form = lem_adj('n', el.text.lower())
-                canon.append(form)
+            for word in term.words:
+                if word.id < head.id:
+                    pre.append(word)
+                elif word.id > head.id:
+                    post.append(word)
 
-    lem = Lemmatizer()
-    lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-    head_form = lem.lemmatize(head.text.lower())
-    canon.append(head_form)
-    for el in post:
-        canon.append(el.text)
-    return ' '.join(canon)
+            canon = []
+            if head.xpos[3] == 'p' and head.xpos[2] == 'f' and head.lemma[-1] == 'i': #sani
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('f', 'p', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                canon.append(head.lemma)
+            elif head.xpos[3] == 'p' and head.xpos[2] == 'f' and head.lemma[-1] == 'e': #hlače
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('f', 'p', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                canon.append(head.lemma)
+            elif head.xpos[3] == 'p' and head.xpos[2] == 'm' and head.lemma[-1] == 'i': #možgani
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('m', 'p', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                canon.append(head.lemma)
+            elif head.xpos[3] == 'p' and head.xpos[2] == 'n' and head.lemma[-1] == 'a': #vrata
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('n', 'p', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                canon.append(head.lemma)
+            elif head.xpos[2] == 'f':
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('f', 's', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                lem = Lemmatizer()
+                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
+                head_form = lem.lemmatize(head.text.lower())
+                canon.append(head_form)
+            elif head.xpos[2] == 'm':
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('m', 's', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                lem = Lemmatizer()
+                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
+                head_form = lem.lemmatize(head.text.lower())
+                canon.append(head_form)
+            elif head.xpos[2] == 'n':
+                for el in pre:
+                    msd = get_adj_msd(head, el)
+                    if msd[0] == 'A':
+                        form = lem_adj('n', 's', el.text.lower())
+                        canon.append(form)
+                    else:
+                        canon.append(el.lemma.lower())
+                lem = Lemmatizer()
+                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
+                head_form = lem.lemmatize(head.text.lower())
+                canon.append(head_form)
+
+            for el in post:
+                canon.append(el.text)
+            return ' '.join(canon)
+    except:
+        return ' '.join([w.text for w in term.words])
 
 
 # def process(data):

@@ -2,3 +2,5 @@
 *.pyo
 __pycache
 .DS_Store
+venv/
+test_canonizer.py
