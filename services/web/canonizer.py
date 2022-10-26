@@ -95,17 +95,6 @@ def _process_pre(pre, head, gender, number):
     return canon
 
 
-def subfinder(mylist, pattern):
-    matches = []
-    for i in range(len(mylist)):
-        if (
-            mylist[i].text.lower() == pattern[0]
-            and [t.text.lower() for t in mylist[i : i + len(pattern)]] == pattern
-        ):
-            matches.append(mylist[i : i + len(pattern)])
-    return matches
-
-
 def find_canon(term):
     if _is_single_acronym(term):
         return term.words[0].text
