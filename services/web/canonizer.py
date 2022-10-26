@@ -79,6 +79,10 @@ def _is_single_acronym(term):
     return False
 
 
+def _join_term_words(term):
+    return " ".join([w.text for w in term.words])
+
+
 def subfinder(mylist, pattern):
     matches = []
     for i in range(len(mylist)):
@@ -119,13 +123,11 @@ def find_canon(term):
             head_form = canon_lemma(head2.text.lower())
             return head_form
         else:
-            return " ".join(
-                [w.text for w in term.words]
-            )  # just return the input because we do not cover such case
+            # just return the input because we do not cover such case
+            return _join_term_words(term)
     elif head.upos == "VERB":  # if the term is not a noun phrase
-        return " ".join(
-            [w.text for w in term.words]
-        )  # just return the input because we do not cover such case
+        # just return the input because we do not cover such case
+        return _join_term_words(term)
     else:
         for word in term.words:
             if word.id < head.id:
@@ -223,7 +225,7 @@ def process(forms):
             canonical_form = find_canon(term)
         except Exception:
             print(traceback.format_exc())
-            canonical_form = " ".join([w.text for w in term.words])
+            canonical_form = _join_term_words(term)
         canonical_forms.append(canonical_form)
     return canonical_forms
 
