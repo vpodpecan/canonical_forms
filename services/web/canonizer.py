@@ -148,35 +148,27 @@ def find_canon(term):
                 post.append(word)
 
         canon = []
-        if (
-            head.xpos[3] == "p" and head.xpos[2] == "f" and head.lemma[-1] == "i"
-        ):  # sani
+        gender = head.xpos[2]
+        number = head.xpos[3]
+        ending = head.lemma[-1]
+        if gender == "f" and number == "s" and ending in "ie":  # sani, hlače
             canon.extend(_process_pre(pre, head, "f", "p"))
             canon.append(head.lemma)
-        elif (
-            head.xpos[3] == "p" and head.xpos[2] == "f" and head.lemma[-1] == "e"
-        ):  # hlače
-            canon.extend(_process_pre(pre, head, "f", "p"))
-            canon.append(head.lemma)
-        elif (
-            head.xpos[3] == "p" and head.xpos[2] == "m" and head.lemma[-1] == "i"
-        ):  # možgani
+        elif gender == "m" and number == "p" and ending == "i":  # možgani
             canon.extend(_process_pre(pre, head, "m", "p"))
             canon.append(head.lemma)
-        elif (
-            head.xpos[3] == "p" and head.xpos[2] == "n" and head.lemma[-1] == "a"
-        ):  # vrata
+        elif gender == "n" and number == "p" and ending == "a":  # vrata
             canon.extend(_process_pre(pre, head, "n", "p"))
             canon.append(head.lemma)
-        elif head.xpos[2] == "f":
+        elif gender == "f":
             canon.extend(_process_pre(pre, head, "f", "s"))
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
-        elif head.xpos[2] == "m":
+        elif gender == "m":
             canon.extend(_process_pre(pre, head, "m", "s"))
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
-        elif head.xpos[2] == "n":
+        elif gender == "n":
             canon.extend(_process_pre(pre, head, "n", "s"))
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
