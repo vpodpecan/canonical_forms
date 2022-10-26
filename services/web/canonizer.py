@@ -116,36 +116,33 @@ def find_canon(term):
         return " ".join(canon_name)
 
     if head is None:
-
         if len(term.words) == 1:
             head2 = term.words[0]
-            head_form = canon_lemma(head2.text.lower())
-            return head_form
+            return canon_lemma(head2.text.lower())
         else:
             # just return the input because we do not cover such case
             return _join_term_words(term)
-    elif head.upos == "VERB":  # if the term is not a noun phrase
+    if head.upos == "VERB":  # if the term is not a noun phrase
         # just return the input because we do not cover such case
         return _join_term_words(term)
+
+    gender = head.xpos[2]
+    number = head.xpos[3]
+    ending = head.lemma[-1]
+    canon = _process_pre(pre, head, gender, number)
+    if gender == "f" and number == "s" and ending in "ie":  # sani, hlače
+        canon.append(head.lemma)
+    elif gender == "m" and number == "p" and ending == "i":  # možgani
+        canon.append(head.lemma)
+    elif gender == "n" and number == "p" and ending == "a":  # vrata
+        canon.append(head.lemma)
     else:
+        head_form = canon_lemma(head.text.lower())
+        canon.append(head_form)
 
-        gender = head.xpos[2]
-        number = head.xpos[3]
-        ending = head.lemma[-1]
-        canon = _process_pre(pre, head, gender, number)
-        if gender == "f" and number == "s" and ending in "ie":  # sani, hlače
-            canon.append(head.lemma)
-        elif gender == "m" and number == "p" and ending == "i":  # možgani
-            canon.append(head.lemma)
-        elif gender == "n" and number == "p" and ending == "a":  # vrata
-            canon.append(head.lemma)
-        else:
-            head_form = canon_lemma(head.text.lower())
-            canon.append(head_form)
-
-        for el in post:
-            canon.append(el.text)
-        return " ".join(canon)
+    for el in post:
+        canon.append(el.text)
+    return " ".join(canon)
 
 
 def process(forms):
