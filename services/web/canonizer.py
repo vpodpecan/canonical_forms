@@ -106,6 +106,10 @@ def find_canon(term):
     for word in term.words:
         if word.head == 0:
             head = word
+        elif head is None:
+            pre.append(word)
+        else:
+            post.append(word)
     ## special case where all words are proper nouns and each word is canonized independently
     if all(w.upos == "PROPN" for w in term.words):
         canon_name = [canon_lemma(w.text) for w in term.words]
@@ -124,11 +128,6 @@ def find_canon(term):
         # just return the input because we do not cover such case
         return _join_term_words(term)
     else:
-        for word in term.words:
-            if word.id < head.id:
-                pre.append(word)
-            elif word.id > head.id:
-                post.append(word)
 
         gender = head.xpos[2]
         number = head.xpos[3]
