@@ -11,30 +11,29 @@ classla.download("sl", logging_level="WARNING")
 
 BASEDIR = os.path.dirname(__file__)
 
+LEMMATIZER_NAME_MAP = {
+    ("m", "s"): "lemmagen_models/kanon-adj-male.bin",
+    ("m", "p"): "lemmagen_models/kanon-adj-male-plural.bin",
+    ("f", "s"): "lemmagen_models/kanon-adj-female.bin",
+    ("f", "p"): "lemmagen_models/kanon-adj-female-plural.bin",
+    ("n", "s"): "lemmagen_models/kanon-adj-neutral.bin",
+    ("n", "p"): "lemmagen_models/kanon-adj-neutral-plural.bin",
+}
+
+_LEMMATIZER_CACHE = {}
+
 
 def lem_adj(gender, number, wrd):
-    lem = Lemmatizer()
-    if gender == "m" and number == "s":
-        lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon-adj-male.bin"))
-    elif gender == "m" and number == "p":
-        lem.load_model(
-            os.path.join(BASEDIR, "lemmagen_models/kanon-adj-male-plural.bin")
-        )
-    elif gender == "f" and number == "s":
-        lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon-adj-female.bin"))
-    elif gender == "f" and number == "p":
-        lem.load_model(
-            os.path.join(BASEDIR, "lemmagen_models/kanon-adj-female-plural.bin")
-        )
-    elif gender == "n" and number == "s":
-        lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon-adj-neutral.bin"))
-    elif gender == "n" and number == "p":
-        lem.load_model(
-            os.path.join(BASEDIR, "lemmagen_models/kanon-adj-neutral-plural.bin")
-        )
-
-    form = lem.lemmatize(wrd)
-    return form
+    lem_key = (gender, number)
+    if lem_key not in _LEMMATIZER_CACHE:
+        assert lem_key in LEMMATIZER_NAME_MAP
+        lemmatizer_model_name = LEMMATIZER_NAME_MAP[lem_key]
+        lemmatizer_model_loc = os.path.join(BASEDIR, lemmatizer_model_name)
+        lemmatizer = Lemmatizer()
+        lemmatizer.load_model(lemmatizer_model_loc)
+        _LEMMATIZER_CACHE[lem_key] = lemmatizer
+    lemmatizer = _LEMMATIZER_CACHE[lem_key]
+    return lemmatizer.lemmatize(wrd)
 
 
 def process_nlp_pipeline(lang, text):
