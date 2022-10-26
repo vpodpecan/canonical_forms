@@ -83,6 +83,18 @@ def _join_term_words(term):
     return " ".join([w.text for w in term.words])
 
 
+def _process_pre(pre, head, gender, number):
+    canon = []
+    for el in pre:
+        msd = get_adj_msd(head, el)
+        if msd[0] == "A":
+            form = lem_adj(gender, number, el.text.lower())
+            canon.append(form)
+        else:
+            canon.append(el.lemma.lower())
+    return canon
+
+
 def subfinder(mylist, pattern):
     matches = []
     for i in range(len(mylist)):
@@ -139,75 +151,33 @@ def find_canon(term):
         if (
             head.xpos[3] == "p" and head.xpos[2] == "f" and head.lemma[-1] == "i"
         ):  # sani
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("f", "p", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "f", "p"))
             canon.append(head.lemma)
         elif (
             head.xpos[3] == "p" and head.xpos[2] == "f" and head.lemma[-1] == "e"
         ):  # hlače
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("f", "p", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "f", "p"))
             canon.append(head.lemma)
         elif (
             head.xpos[3] == "p" and head.xpos[2] == "m" and head.lemma[-1] == "i"
         ):  # možgani
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("m", "p", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "m", "p"))
             canon.append(head.lemma)
         elif (
             head.xpos[3] == "p" and head.xpos[2] == "n" and head.lemma[-1] == "a"
         ):  # vrata
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("n", "p", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "n", "p"))
             canon.append(head.lemma)
         elif head.xpos[2] == "f":
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("f", "s", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "f", "s"))
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
         elif head.xpos[2] == "m":
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("m", "s", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "m", "s"))
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
         elif head.xpos[2] == "n":
-            for el in pre:
-                msd = get_adj_msd(head, el)
-                if msd[0] == "A":
-                    form = lem_adj("n", "s", el.text.lower())
-                    canon.append(form)
-                else:
-                    canon.append(el.lemma.lower())
+            canon.extend(_process_pre(pre, head, "n", "s"))
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
 
