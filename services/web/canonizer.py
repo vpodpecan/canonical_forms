@@ -16,6 +16,10 @@ def _resolve_lemmagen_model_loc(model_name):
     return os.path.join(BASEDIR, "lemmagen_models", model_name)
 
 
+_canon_lemmatizer = Lemmatizer()
+_canon_lemmatizer.load_model(_resolve_lemmagen_model_loc("kanon.bin"))
+canon_lemma = _canon_lemmatizer.lemmatize
+
 ADJ_LEMMATIZER_LOC_MAP = {
     ("m", "s"): _resolve_lemmagen_model_loc("kanon-adj-male.bin"),
     ("m", "p"): _resolve_lemmagen_model_loc("kanon-adj-male-plural.bin"),
@@ -108,9 +112,7 @@ def find_canon(term):
         if propns == len(term.words):
             canon_name = []
             for word in term.words:
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon.bin"))
-                form = lem.lemmatize(word.text)
+                form = canon_lemma(word.text)
                 canon_name.append(form)
             return " ".join(canon_name)
 
@@ -118,9 +120,7 @@ def find_canon(term):
 
             if len(term.words) == 1:
                 head2 = term.words[0]
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon.bin"))
-                head_form = lem.lemmatize(head2.text.lower())
+                head_form = canon_lemma(head2.text.lower())
                 return head_form
             else:
                 return " ".join(
@@ -190,9 +190,7 @@ def find_canon(term):
                         canon.append(form)
                     else:
                         canon.append(el.lemma.lower())
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon.bin"))
-                head_form = lem.lemmatize(head.text.lower())
+                head_form = canon_lemma(head.text.lower())
                 canon.append(head_form)
             elif head.xpos[2] == "m":
                 for el in pre:
@@ -202,9 +200,7 @@ def find_canon(term):
                         canon.append(form)
                     else:
                         canon.append(el.lemma.lower())
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon.bin"))
-                head_form = lem.lemmatize(head.text.lower())
+                head_form = canon_lemma(head.text.lower())
                 canon.append(head_form)
             elif head.xpos[2] == "n":
                 for el in pre:
@@ -214,9 +210,7 @@ def find_canon(term):
                         canon.append(form)
                     else:
                         canon.append(el.lemma.lower())
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, "lemmagen_models/kanon.bin"))
-                head_form = lem.lemmatize(head.text.lower())
+                head_form = canon_lemma(head.text.lower())
                 canon.append(head_form)
 
             for el in post:
