@@ -71,6 +71,14 @@ def get_adj_msd(head, word):
     return msd
 
 
+def _is_single_acronym(term):
+    # (single word, all uppercase and length less than 5 characters)
+    if len(term.words) == 1:
+        word = term.words[0].text
+        return len(word) < 5 and word.isupper()
+    return False
+
+
 def subfinder(mylist, pattern):
     matches = []
     for i in range(len(mylist)):
@@ -85,11 +93,7 @@ def subfinder(mylist, pattern):
 def find_canon(term):
 
     try:
-        if (
-            len(term.words) == 1
-            and term.words[0].text.isupper()
-            and len(term.words[0].text) < 5
-        ):  # if acronym (single word, all uppercase and length les than 5 characters)
+        if _is_single_acronym(term):
             return term.words[0].text
 
         head = None
