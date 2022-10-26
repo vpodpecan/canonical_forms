@@ -56,8 +56,6 @@ def get_adj_msd(head, word):
         f = f.strip().split("=")
         feats_dict[f[0]] = f[1]
     gender = feats_dict["Gender"]
-    # print(gender)
-    # gender = gender.strip().split('=')[1]
     if gender == "Masc" and len(word.xpos) == 6:
         msd = word.xpos[:-1] + "ny"
     elif gender == "Masc" and len(word.xpos) == 7:
@@ -75,8 +73,6 @@ def get_adj_msd(head, word):
 def subfinder(mylist, pattern):
     matches = []
     for i in range(len(mylist)):
-        # print(mylist[i].text)
-        # if mylist[i].text == pattern[0] and mylist[i:i+len(pattern)].text == pattern:
         if (
             mylist[i].text.lower() == pattern[0]
             and [t.text.lower() for t in mylist[i : i + len(pattern)]] == pattern
@@ -228,20 +224,6 @@ def find_canon(term):
         return " ".join([w.text for w in term.words])
 
 
-# def process(data):
-#     '''data is a list of pairs (lemma, form)
-#     '''
-#     terms = [x[1] for x in data]
-#     lemmas = [x[0] for x in data]
-#     text = '\n'.join(terms)
-#     doc = process_nlp_pipeline('sl', text)
-#
-#     result = []
-#     for term, sent, lemma in zip(terms, doc.sentences, lemmas):
-#         result.append((lemma, find_canon(sent)))
-#     return result
-
-
 def process(forms):
     text = "\n".join(forms)
     doc = process_nlp_pipeline("sl", text)
@@ -278,13 +260,3 @@ if __name__ == "__main__":
     results = process(data)
     for canon in results:
         print("{}".format(canon))
-
-
-# if __name__ == '__main__':
-#     if len(sys.argv) != 2:
-#         print('Usage: python generate_cannonical.py <csv file>')
-#     else:
-#         data = read_csv(sys.argv[1], columnID=0, sep='\t')
-#         results = process(data)
-#         for canon in results:
-#             print('{}'.format(canon))
