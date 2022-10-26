@@ -3,6 +3,8 @@ import classla
 import csv
 import argparse
 from lemmagen3 import Lemmatizer
+import traceback
+
 
 classla.download('sl', logging_level='WARNING')
 
@@ -53,7 +55,8 @@ def get_adj_msd(head, word):
     elif gender == 'Neut':
         msd = word.xpos[:-1]+'n'
     else:
-        msd = None
+        #msd = None
+        msd = 'qqqqqq' #hacky but it means that adverbs are just copied over to the canonical form
     return msd
 
 
@@ -95,8 +98,9 @@ def find_canon(term):
             return ' '.join(canon_name)
 
 
-
+        
         if head is None:
+            
             if len(term.words) == 1:
                 head2 = term.words[0]
                 lem = Lemmatizer()
@@ -105,6 +109,8 @@ def find_canon(term):
                 return head_form
             else:
                 return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
+        elif head.upos == 'VERB': # if the term is not a noun phrase
+            return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
         else:
             for word in term.words:
                 if word.id < head.id:
@@ -189,7 +195,8 @@ def find_canon(term):
             for el in post:
                 canon.append(el.text)
             return ' '.join(canon)
-    except:
+    except Exception as e:
+        print(traceback.format_exc())
         return ' '.join([w.text for w in term.words])
 
 
