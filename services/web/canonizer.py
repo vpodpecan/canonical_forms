@@ -157,13 +157,7 @@ def find_canon(term):
             canon.append(head.lemma)
         elif gender == "n" and number == "p" and ending == "a":  # vrata
             canon.append(head.lemma)
-        elif gender == "f":
-            head_form = canon_lemma(head.text.lower())
-            canon.append(head_form)
-        elif gender == "m":
-            head_form = canon_lemma(head.text.lower())
-            canon.append(head_form)
-        elif gender == "n":
+        else:
             head_form = canon_lemma(head.text.lower())
             canon.append(head_form)
 
