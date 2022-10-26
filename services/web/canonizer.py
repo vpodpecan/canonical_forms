@@ -9,11 +9,10 @@ from lemmagen3 import Lemmatizer
 
 classla.download("sl", logging_level="WARNING")
 
-BASEDIR = os.path.dirname(__file__)
-
 
 def _resolve_lemmagen_model_loc(model_name):
-    return os.path.join(BASEDIR, "lemmagen_models", model_name)
+    basedir = os.path.dirname(__file__)
+    return os.path.join(basedir, "lemmagen_models", model_name)
 
 
 _canon_lemmatizer = Lemmatizer()
