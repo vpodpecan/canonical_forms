@@ -11,13 +11,18 @@ classla.download("sl", logging_level="WARNING")
 
 BASEDIR = os.path.dirname(__file__)
 
-ADJ_LEMMATIZER_NAME_MAP = {
-    ("m", "s"): "lemmagen_models/kanon-adj-male.bin",
-    ("m", "p"): "lemmagen_models/kanon-adj-male-plural.bin",
-    ("f", "s"): "lemmagen_models/kanon-adj-female.bin",
-    ("f", "p"): "lemmagen_models/kanon-adj-female-plural.bin",
-    ("n", "s"): "lemmagen_models/kanon-adj-neutral.bin",
-    ("n", "p"): "lemmagen_models/kanon-adj-neutral-plural.bin",
+
+def _resolve_lemmagen_model_loc(model_name):
+    return os.path.join(BASEDIR, "lemmagen_models", model_name)
+
+
+ADJ_LEMMATIZER_LOC_MAP = {
+    ("m", "s"): _resolve_lemmagen_model_loc("kanon-adj-male.bin"),
+    ("m", "p"): _resolve_lemmagen_model_loc("kanon-adj-male-plural.bin"),
+    ("f", "s"): _resolve_lemmagen_model_loc("kanon-adj-female.bin"),
+    ("f", "p"): _resolve_lemmagen_model_loc("kanon-adj-female-plural.bin"),
+    ("n", "s"): _resolve_lemmagen_model_loc("kanon-adj-neutral.bin"),
+    ("n", "p"): _resolve_lemmagen_model_loc("kanon-adj-neutral-plural.bin"),
 }
 
 _ADJ_LEMMATIZER_CACHE = {}
@@ -26,9 +31,8 @@ _ADJ_LEMMATIZER_CACHE = {}
 def lem_adj(gender, number, wrd):
     lem_key = (gender, number)
     if lem_key not in _ADJ_LEMMATIZER_CACHE:
-        assert lem_key in ADJ_LEMMATIZER_NAME_MAP
-        lemmatizer_model_name = ADJ_LEMMATIZER_NAME_MAP[lem_key]
-        lemmatizer_model_loc = os.path.join(BASEDIR, lemmatizer_model_name)
+        assert lem_key in ADJ_LEMMATIZER_LOC_MAP
+        lemmatizer_model_loc = ADJ_LEMMATIZER_LOC_MAP[lem_key]
         lemmatizer = Lemmatizer()
         lemmatizer.load_model(lemmatizer_model_loc)
         _ADJ_LEMMATIZER_CACHE[lem_key] = lemmatizer
