@@ -8,6 +8,12 @@ from lemmagen3 import Lemmatizer
 
 
 classla.download("sl", logging_level="WARNING")
+classla_nlp_pipeline = classla.Pipeline(
+    lang="sl",
+    processors="tokenize,pos,lemma,depparse",
+    tokenize_pretokenized=True,
+    logging_level="WARNING",
+)
 
 
 def _resolve_lemmagen_model_loc(model_name):
@@ -41,17 +47,6 @@ def lem_adj(gender, number, wrd):
         _ADJ_LEMMATIZER_CACHE[lem_key] = lemmatizer
     lemmatizer = _ADJ_LEMMATIZER_CACHE[lem_key]
     return lemmatizer.lemmatize(wrd)
-
-
-def process_nlp_pipeline(lang, text):
-    nlp = classla.Pipeline(
-        lang=lang,
-        processors="tokenize,pos,lemma, depparse",
-        tokenize_pretokenized=True,
-        logging_level="WARNING",
-    )
-    doc = nlp(text)
-    return doc
 
 
 def get_adj_msd(head, word):
@@ -222,7 +217,7 @@ def find_canon(term):
 
 def process(forms):
     text = "\n".join(forms)
-    doc = process_nlp_pipeline("sl", text)
+    doc = classla_nlp_pipeline(text)
     return [find_canon(sent) for sent in doc.sentences]
 
 
