@@ -4,3 +4,4 @@ __pycache
 .DS_Store
 venv/
 test_canonizer.py
+data/

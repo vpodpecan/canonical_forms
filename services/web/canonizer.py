@@ -1,7 +1,7 @@
 import argparse
 import csv
 import os
-import traceback
+import string
 
 import classla
 from lemmagen3 import Lemmatizer
@@ -125,6 +125,12 @@ def find_canon(term):
     if head.upos == "VERB":  # if the term is not a noun phrase
         # just return the input because we do not cover such case
         return _join_term_words(term)
+    if head.upos == "ADJ":
+        if len(term.words) == 1:  # for single word adjectives, return male form
+            return lem_adj("m", "s", term.words[0].text.lower())
+        else:
+            # just return the input because we do not cover such case
+            return _join_term_words(term)
 
     gender = head.xpos[2]
     number = head.xpos[3]
@@ -156,7 +162,6 @@ def process(forms):
         try:
             canonical_form = find_canon(term)
         except Exception:
-            print(traceback.format_exc())
             canonical_form = _join_term_words(term)
         canonical_forms.append(canonical_form)
     return canonical_forms
@@ -174,7 +179,7 @@ def read_csv(fname, columnID=0):
         reader = csv.reader(csvfile, dialect)
         for i, row in enumerate(reader):
             try:
-                data.append(row[columnID])
+                data.append(row[columnID].strip(string.punctuation))
             except:
                 print("Error, line {}".format(i))
     return data
