@@ -102,19 +102,13 @@ def find_canon(term):
     head = None
     pre = []
     post = []
-    propns = 0
 
     for word in term.words:
-        if word.upos == "PROPN":
-            propns += 1
         if word.head == 0:
             head = word
     ## special case where all words are proper nouns and each word is canonized independently
-    if propns == len(term.words):
-        canon_name = []
-        for word in term.words:
-            form = canon_lemma(word.text)
-            canon_name.append(form)
+    if all(w.upos == "PROPN" for w in term.words):
+        canon_name = [canon_lemma(w.text) for w in term.words]
         return " ".join(canon_name)
 
     if head is None:
