@@ -129,14 +129,17 @@ def find_canon(term):
     gender = head.xpos[2]
     number = head.xpos[3]
     ending = head.lemma[-1]
-    canon = _process_pre(pre, head, gender, number)
-    if gender == "f" and number == "s" and ending in "ie":  # sani, hlače
+    if gender == "f" and number == "p" and ending in "ie":  # sani, hlače
+        canon = _process_pre(pre, head, gender, number)
         canon.append(head.lemma)
     elif gender == "m" and number == "p" and ending == "i":  # možgani
+        canon = _process_pre(pre, head, gender, number)
         canon.append(head.lemma)
     elif gender == "n" and number == "p" and ending == "a":  # vrata
+        canon = _process_pre(pre, head, gender, number)
         canon.append(head.lemma)
     else:
+        canon = _process_pre(pre, head, gender, "s")
         head_form = canon_lemma(head.text.lower())
         canon.append(head_form)
 
