@@ -4,7 +4,6 @@ import csv
 import argparse
 from lemmagen3 import Lemmatizer
 import traceback
-import string
 
 
 classla.download('sl', logging_level='WARNING')
@@ -84,7 +83,6 @@ def find_canon(term):
 
         
         for word in term.words:
-            #print(word)
             if word.upos == "PROPN":
                 propns += 1
             if word.head == 0:
@@ -113,12 +111,6 @@ def find_canon(term):
                 return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
         elif head.upos == 'VERB': # if the term is not a noun phrase
             return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
-        elif head.upos == 'ADJ':
-            if len(term.words) == 1: # for single word adjectives, return male form
-                form = lem_adj('m', 's', term.words[0].text.lower())
-                return form
-            else:
-                return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
         else:
             for word in term.words:
                 if word.id < head.id:
@@ -204,7 +196,7 @@ def find_canon(term):
                 canon.append(el.text)
             return ' '.join(canon)
     except Exception as e:
-        #print(traceback.format_exc())
+        print(traceback.format_exc())
         return ' '.join([w.text for w in term.words])
 
 
@@ -240,7 +232,7 @@ def read_csv(fname, columnID=0):
         reader = csv.reader(csvfile, dialect)
         for i, row in enumerate(reader):
             try:
-                data.append(row[columnID].strip(string.punctuation))
+                data.append(row[columnID])
             except:
                 print('Error, line {}'.format(i))
     return data
