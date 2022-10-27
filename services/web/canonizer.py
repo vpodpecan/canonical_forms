@@ -1,231 +1,170 @@
-import os
-import classla
-import csv
 import argparse
-from lemmagen3 import Lemmatizer
-import traceback
+import csv
+import os
 import string
 
+import classla
+from lemmagen3 import Lemmatizer
 
-classla.download('sl', logging_level='WARNING')
 
-BASEDIR = os.path.dirname(__file__)
+classla.download("sl", logging_level="WARNING")
+classla_nlp_pipeline = classla.Pipeline(
+    lang="sl",
+    processors="tokenize,pos,lemma,depparse",
+    tokenize_pretokenized=True,
+    logging_level="WARNING",
+)
+
+
+def _resolve_lemmagen_model_loc(model_name):
+    basedir = os.path.dirname(__file__)
+    return os.path.join(basedir, "lemmagen_models", model_name)
+
+
+_canon_lemmatizer = Lemmatizer()
+_canon_lemmatizer.load_model(_resolve_lemmagen_model_loc("kanon.bin"))
+canon_lemma = _canon_lemmatizer.lemmatize
+
+ADJ_LEMMATIZER_LOC_MAP = {
+    ("m", "s"): _resolve_lemmagen_model_loc("kanon-adj-male.bin"),
+    ("m", "p"): _resolve_lemmagen_model_loc("kanon-adj-male-plural.bin"),
+    ("f", "s"): _resolve_lemmagen_model_loc("kanon-adj-female.bin"),
+    ("f", "p"): _resolve_lemmagen_model_loc("kanon-adj-female-plural.bin"),
+    ("n", "s"): _resolve_lemmagen_model_loc("kanon-adj-neutral.bin"),
+    ("n", "p"): _resolve_lemmagen_model_loc("kanon-adj-neutral-plural.bin"),
+}
+
+_ADJ_LEMMATIZER_CACHE = {}
 
 
 def lem_adj(gender, number, wrd):
-    lem = Lemmatizer()
-    if gender == 'm' and number == 's':
-        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-male.bin'))
-    elif gender == 'm' and number == 'p':
-        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-male-plural.bin'))
-    elif gender == 'f' and number == 's':
-        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-female.bin'))
-    elif gender == 'f' and number == 'p':
-        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-female-plural.bin'))
-    elif gender == 'n' and number == 's':
-        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-neutral.bin'))
-    elif gender == 'n' and number == 'p':
-        lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon-adj-neutral-plural.bin'))
-
-    form = lem.lemmatize(wrd)
-    return form
-
-
-def process_nlp_pipeline(lang, text):
-    nlp = classla.Pipeline(lang=lang, processors='tokenize,pos,lemma, depparse', tokenize_pretokenized=True, logging_level='WARNING')
-    doc = nlp(text)
-    return doc
+    lem_key = (gender, number)
+    if lem_key not in _ADJ_LEMMATIZER_CACHE:
+        assert lem_key in ADJ_LEMMATIZER_LOC_MAP
+        lemmatizer_model_loc = ADJ_LEMMATIZER_LOC_MAP[lem_key]
+        lemmatizer = Lemmatizer()
+        lemmatizer.load_model(lemmatizer_model_loc)
+        _ADJ_LEMMATIZER_CACHE[lem_key] = lemmatizer
+    lemmatizer = _ADJ_LEMMATIZER_CACHE[lem_key]
+    return lemmatizer.lemmatize(wrd)
 
 
 def get_adj_msd(head, word):
     feats = head.feats
     feats_dict = {}
-    feats = feats.strip().split('|')
+    feats = feats.strip().split("|")
     for f in feats:
-        f = f.strip().split('=')
+        f = f.strip().split("=")
         feats_dict[f[0]] = f[1]
-    gender = feats_dict['Gender']
-    #print(gender)
-    #gender = gender.strip().split('=')[1]
-    if gender == 'Masc' and len(word.xpos) == 6:
-        msd = word.xpos[:-1]+'ny'
-    elif gender == 'Masc' and len(word.xpos) == 7:
-        msd = word.xpos[:-1]+'y'
-    elif gender == 'Fem':
-        msd = word.xpos[:-1]+'n'
-    elif gender == 'Neut':
-        msd = word.xpos[:-1]+'n'
+    gender = feats_dict["Gender"]
+    if gender == "Masc" and len(word.xpos) == 6:
+        msd = word.xpos[:-1] + "ny"
+    elif gender == "Masc" and len(word.xpos) == 7:
+        msd = word.xpos[:-1] + "y"
+    elif gender == "Fem":
+        msd = word.xpos[:-1] + "n"
+    elif gender == "Neut":
+        msd = word.xpos[:-1] + "n"
     else:
-        #msd = None
-        msd = 'qqqqqq' #hacky but it means that adverbs are just copied over to the canonical form
+        # msd = None
+        msd = "qqqqqq"  # hacky but it means that adverbs are just copied over to the canonical form
     return msd
 
 
-def subfinder(mylist, pattern):
-    matches = []
-    for i in range(len(mylist)):
-        #print(mylist[i].text)
-        #if mylist[i].text == pattern[0] and mylist[i:i+len(pattern)].text == pattern:
-        if mylist[i].text.lower() == pattern[0] and [t.text.lower() for t in mylist[i:i+len(pattern)]] == pattern:
-            matches.append(mylist[i:i+len(pattern)])
-    return matches
+def _is_single_acronym(term):
+    # (single word, all uppercase and length less than 5 characters)
+    if len(term.words) == 1:
+        word = term.words[0].text
+        return len(word) < 5 and word.isupper()
+    return False
+
+
+def _join_term_words(term):
+    return " ".join([w.text for w in term.words])
+
+
+def _process_pre(pre, head, gender, number):
+    canon = []
+    for el in pre:
+        msd = get_adj_msd(head, el)
+        if msd[0] == "A":
+            form = lem_adj(gender, number, el.text.lower())
+            canon.append(form)
+        else:
+            canon.append(el.lemma.lower())
+    return canon
 
 
 def find_canon(term):
+    if _is_single_acronym(term):
+        return term.words[0].text
 
-    try:
-        if len(term.words) == 1 and term.words[0].text.isupper() and len( term.words[0].text) < 5: # if acronym (single word, all uppercase and length les than 5 characters)
-            return  term.words[0].text
+    head = None
+    pre = []
+    post = []
 
-        head = None
-        pre = []
-        post = []
-        propns = 0
-
-        
-        for word in term.words:
-            #print(word)
-            if word.upos == "PROPN":
-                propns += 1
-            if word.head == 0:
-                head = word
-        ## special case where all words are proper nouns and each word is canonized independently 
-        if propns == len(term.words):
-            canon_name = []
-            for word in term.words:
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-                form = lem.lemmatize(word.text)
-                canon_name.append(form)
-            return ' '.join(canon_name)
-
-
-        
-        if head is None:
-            
-            if len(term.words) == 1:
-                head2 = term.words[0]
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-                head_form = lem.lemmatize(head2.text.lower())
-                return head_form
-            else:
-                return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
-        elif head.upos == 'VERB': # if the term is not a noun phrase
-            return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
-        elif head.upos == 'ADJ':
-            if len(term.words) == 1: # for single word adjectives, return male form
-                form = lem_adj('m', 's', term.words[0].text.lower())
-                return form
-            else:
-                return ' '.join([w.text for w in term.words])  # just return the input because we do not cover such case
+    for word in term.words:
+        if word.head == 0:
+            head = word
+        elif head is None:
+            pre.append(word)
         else:
-            for word in term.words:
-                if word.id < head.id:
-                    pre.append(word)
-                elif word.id > head.id:
-                    post.append(word)
+            post.append(word)
+    ## special case where all words are proper nouns and each word is canonized independently
+    if all(w.upos == "PROPN" for w in term.words):
+        canon_name = [canon_lemma(w.text) for w in term.words]
+        return " ".join(canon_name)
 
-            canon = []
-            if head.xpos[3] == 'p' and head.xpos[2] == 'f' and head.lemma[-1] == 'i': #sani
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('f', 'p', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                canon.append(head.lemma)
-            elif head.xpos[3] == 'p' and head.xpos[2] == 'f' and head.lemma[-1] == 'e': #hlače
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('f', 'p', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                canon.append(head.lemma)
-            elif head.xpos[3] == 'p' and head.xpos[2] == 'm' and head.lemma[-1] == 'i': #možgani
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('m', 'p', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                canon.append(head.lemma)
-            elif head.xpos[3] == 'p' and head.xpos[2] == 'n' and head.lemma[-1] == 'a': #vrata
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('n', 'p', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                canon.append(head.lemma)
-            elif head.xpos[2] == 'f':
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('f', 's', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-                head_form = lem.lemmatize(head.text.lower())
-                canon.append(head_form)
-            elif head.xpos[2] == 'm':
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('m', 's', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-                head_form = lem.lemmatize(head.text.lower())
-                canon.append(head_form)
-            elif head.xpos[2] == 'n':
-                for el in pre:
-                    msd = get_adj_msd(head, el)
-                    if msd[0] == 'A':
-                        form = lem_adj('n', 's', el.text.lower())
-                        canon.append(form)
-                    else:
-                        canon.append(el.lemma.lower())
-                lem = Lemmatizer()
-                lem.load_model(os.path.join(BASEDIR, 'lemmagen_models/kanon.bin'))
-                head_form = lem.lemmatize(head.text.lower())
-                canon.append(head_form)
+    if head is None:
+        if len(term.words) == 1:
+            head2 = term.words[0]
+            return canon_lemma(head2.text.lower())
+        else:
+            # just return the input because we do not cover such case
+            return _join_term_words(term)
+    if head.upos == "VERB":  # if the term is not a noun phrase
+        # just return the input because we do not cover such case
+        return _join_term_words(term)
+    if head.upos == "ADJ":
+        if len(term.words) == 1:  # for single word adjectives, return male form
+            return lem_adj("m", "s", term.words[0].text.lower())
+        else:
+            # just return the input because we do not cover such case
+            return _join_term_words(term)
 
-            for el in post:
-                canon.append(el.text)
-            return ' '.join(canon)
-    except Exception as e:
-        #print(traceback.format_exc())
-        return ' '.join([w.text for w in term.words])
+    gender = head.xpos[2]
+    number = head.xpos[3]
+    ending = head.lemma[-1]
+    if gender == "f" and number == "p" and ending in "ie":  # sani, hlače
+        canon = _process_pre(pre, head, gender, number)
+        canon.append(head.lemma)
+    elif gender == "m" and number == "p" and ending == "i":  # možgani
+        canon = _process_pre(pre, head, gender, number)
+        canon.append(head.lemma)
+    elif gender == "n" and number == "p" and ending == "a":  # vrata
+        canon = _process_pre(pre, head, gender, number)
+        canon.append(head.lemma)
+    else:
+        canon = _process_pre(pre, head, gender, "s")
+        head_form = canon_lemma(head.text.lower())
+        canon.append(head_form)
 
-
-# def process(data):
-#     '''data is a list of pairs (lemma, form)
-#     '''
-#     terms = [x[1] for x in data]
-#     lemmas = [x[0] for x in data]
-#     text = '\n'.join(terms)
-#     doc = process_nlp_pipeline('sl', text)
-#
-#     result = []
-#     for term, sent, lemma in zip(terms, doc.sentences, lemmas):
-#         result.append((lemma, find_canon(sent)))
-#     return result
+    for el in post:
+        canon.append(el.text)
+    return " ".join(canon)
 
 
 def process(forms):
-    text = '\n'.join(forms)
-    doc = process_nlp_pipeline('sl', text)
-    return [find_canon(sent) for sent in doc.sentences]
+    text = "\n".join(forms)
+    doc = classla_nlp_pipeline(text)
+    canonical_forms = []
+    for term in doc.sentences:
+        try:
+            canonical_form = find_canon(term)
+        except Exception:
+            canonical_form = _join_term_words(term)
+        canonical_forms.append(canonical_form)
+    return canonical_forms
 
 
 def read_csv(fname, columnID=0):
@@ -234,35 +173,27 @@ def read_csv(fname, columnID=0):
         try:
             dialect = csv.Sniffer().sniff(csvfile.read(2048))
         except csv.Error:
-            print('Warning: cannot determine delimiter, assuming Excel CSV dialect.')
-            dialect = 'excel'
+            print("Warning: cannot determine delimiter, assuming Excel CSV dialect.")
+            dialect = "excel"
         csvfile.seek(0)
         reader = csv.reader(csvfile, dialect)
         for i, row in enumerate(reader):
             try:
                 data.append(row[columnID].strip(string.punctuation))
             except:
-                print('Error, line {}'.format(i))
+                print("Error, line {}".format(i))
     return data
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Converter to canonical form in Slovene language')
-    parser.add_argument('csv_file', type=argparse.FileType('r'), help='Input csv file')
-    parser.add_argument('column_id', type=int, help='CSV column number (zero indexed)')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Converter to canonical form in Slovene language"
+    )
+    parser.add_argument("csv_file", type=argparse.FileType("r"), help="Input csv file")
+    parser.add_argument("column_id", type=int, help="CSV column number (zero indexed)")
     args = parser.parse_args()
 
     data = read_csv(args.csv_file.name, columnID=args.column_id)
     results = process(data)
     for canon in results:
-        print('{}'.format(canon))
-
-
-# if __name__ == '__main__':
-#     if len(sys.argv) != 2:
-#         print('Usage: python generate_cannonical.py <csv file>')
-#     else:
-#         data = read_csv(sys.argv[1], columnID=0, sep='\t')
-#         results = process(data)
-#         for canon in results:
-#             print('{}'.format(canon))
+        print("{}".format(canon))
